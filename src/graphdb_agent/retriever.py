@@ -1,17 +1,47 @@
-import redis
-from falkordb import FalkorDB
-from sentence_transformers import SentenceTransformer
-from typing import List
-from sklearn.metrics.pairwise import cosine_similarity
-import numpy as np
-from graphdb_agent import config
-from graphdb_agent.graph_builder import get_schema_data
-from rank_bm25 import BM25Okapi
-import itertools
 import os
-import yaml
 from typing import List, Dict
 
+import numpy as np
+import yaml
+from falkordb import FalkorDB
+from rank_bm25 import BM25Okapi
+from sentence_transformers import SentenceTransformer
+from sklearn.metrics.pairwise import cosine_similarity
+
+# pip install spacy
+# python -m spacy download en_core_web_sm
+import spacy
+from graphdb_agent import config
+
+# text_to_sql_agent/retriever.py
+
+import os
+import yaml
+import spacy # <-- Import spaCy
+from rank_bm25 import BM25Okapi
+# ... other imports
+
+# --- Load spaCy model once ---
+# In a real app, this would be part of a class or global setup
+try:
+    nlp = spacy.load("en_core_web_sm")
+except OSError:
+    print("Downloading 'en_core_web_sm' model...")
+    os.system("python -m spacy download en_core_web_sm")
+    nlp = spacy.load("en_core_web_sm")
+
+def lemmatize_text(text: str) -> List[str]:
+    """
+    Processes text using spaCy to lemmatize and remove stop words and punctuation.
+    """
+
+    doc = nlp(text.lower())
+    lemmas = [
+        token.lemma_
+        for token in doc
+        if not token.is_stop and not token.is_punct and token.is_alpha
+    ]
+    return lemmas
 
 # --- One-time Setup for BM25 ---
 # This class can be instantiated once and reused.
@@ -20,7 +50,7 @@ class BM25Searcher:
 
     def __init__(self):
         print("Initializing BM25 Searcher...")
-        corpus = []
+        self.tokenized_corpus = []
         self.table_names_in_order = []
 
         # Loop through YAML files to build the corpus for BM25
@@ -36,14 +66,14 @@ class BM25Searcher:
 
                     # Create a comprehensive text document for each table
                     text_for_table = f"{table_name} {description} {columns} {synonyms}"
-                    corpus.append(text_for_table)
+                    tokenized_doc = lemmatize_text(text_for_table)
+                    self.tokenized_corpus.extend(tokenized_doc +  columns.split(" "))  # keep original column names too
                     self.table_names_in_order.append(table_name)
 
-        tokenized_corpus = [doc.lower().split(" ") for doc in corpus]
-        self.bm25 = BM25Okapi(tokenized_corpus)
+        self.bm25 = BM25Okapi(self.tokenized_corpus)
 
     def search(self, query: str) -> List[Dict[str, any]]:
-        tokenized_query = query.lower().split(" ")
+        tokenized_query = lemmatize_text(query)
         bm25_scores = self.bm25.get_scores(tokenized_query)
 
         # Normalize scores for consistent fusion
@@ -173,8 +203,14 @@ def find_candidate_tables(user_query: str, limit: int = 3) -> List[str]:
 
 # --- Main Execution Block for Demonstration ---
 if __name__ == "__main__":
+
+
+    kk= BM25Searcher()
+    kk.tokenized_corpus
+
+
     user_query="What is the average order value for customers who signed up in the last quarter?"
-    user_query =  "Who is the suppliers?"
+    user_query =  "Who is the supplier?"
     retval_emb = find_candidate_tables(user_query,3)
     retval_hybrid = find_candidate_tables_hybrid(user_query,3)
 
