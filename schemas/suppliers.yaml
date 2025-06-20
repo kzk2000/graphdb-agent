@@ -1,0 +1,16 @@
+table_name: suppliers
+table_description: "Lists all vendors and companies that supply products to us."
+sample_questions:
+  - "Which suppliers provide our electronics?"
+  - "List all suppliers located in Germany."
+  - "How many suppliers do we have?"
+columns:
+  - name: id
+    type: integer
+    description: "Unique identifier for a supplier, primary key."
+  - name: company_name
+    type: varchar
+    description: "The legal name of the supplier company."
+  - name: country
+    type: varchar
+    description: "The country where the supplier is based."

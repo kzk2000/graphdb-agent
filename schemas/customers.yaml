@@ -1,0 +1,15 @@
+table_name: customers
+table_description: "Stores all information about individual users and customers."
+sample_questions:
+  - "Who are our newest customers?"
+  - "List all users from California."
+columns:
+  - name: id
+    type: integer
+    description: "Unique identifier for a customer, primary key."
+  - name: name
+    type: varchar
+    description: "The full name of the customer."
+  - name: signup_date
+    type: date
+    description: "The date the customer registered."

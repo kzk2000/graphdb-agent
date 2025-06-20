@@ -1,0 +1,33 @@
+services:
+#  neo4j:
+#    image: neo4j:5.26.2
+#    container_name: neo4j
+#    healthcheck:
+#      test: wget "http://localhost:7687" || exit 1
+#      interval: 1s
+#      timeout: 10s
+#      retries: 20
+#      start_period: 3s
+#    ports:
+#      - "7474:7474" # HTTP
+#      - "7687:7687" # Bolt
+#    volumes:
+#      - ./data/neo4j:/data
+#    environment:
+#      - NEO4J_AUTH=neo4j/password
+
+  falkordb:
+    image: falkordb/falkordb:v4.10.1
+    container_name: falkordb
+    healthcheck:
+      test: ["CMD", "redis-cli", "-h", "localhost", "PING"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    ports:
+      - "6379:6379" # HTTP
+      - "3000:3000" # UI
+    volumes:
+      - ./data/falkordb:/data
+

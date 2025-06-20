@@ -1,0 +1,21 @@
+table_name: orders
+table_description: "Records every sales transaction made by customers."
+sample_questions:
+  - "What were our total sales last month?"
+  - "How many orders did we have in Q2?"
+  - "Show me the biggest orders."
+columns:
+  - name: id
+    type: integer
+    description: "Unique identifier for an order, primary key."
+  - name: customer_id
+    type: integer
+    description: "Foreign key that links to the customers table id."
+  - name: order_date
+    type: date
+    description: "The date the transaction occurred."
+    synonyms: ["transaction_date", "purchase_date", "when the order was placed"]
+  - name: total_amount
+    type: decimal
+    description: "The total monetary value of the order."
+    synonyms: ["revenue", "sales", "price", "cost", "income"]

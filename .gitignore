@@ -1,0 +1,27 @@
+# Jupyter Notebook
+.ipynb_checkpoints
+*/.ipynb_checkpoints/*
+
+# IPython
+profile_default/
+ipython_config.py
+
+# Jupyter temporary files
+.jupyter/
+.local/share/jupyter/
+__pycache__/
+
+*.egg-info
+.eggs
+.idea
+/venv
+/data
+!/data/.gitkeep
+_cache
+
+
+snp_generation
+
+lightning_logs
+
+.vscode

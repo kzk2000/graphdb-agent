@@ -1,0 +1,29 @@
+table_name: products
+table_description: "Contains a catalog of all products available for sale, including their pricing, category, and stock levels."
+sample_questions:
+  - "Which products are most expensive?"
+  - "How many laptops do we have in stock?"
+  - "List all products in the 'Electronics' category."
+columns:
+  - name: id
+    type: integer
+    description: "Unique identifier for a product, primary key."
+  - name: name
+    type: varchar
+    description: "The official name or title of the product."
+    synonyms: ["product_name", "item_name", "title"]
+  - name: category
+    type: varchar
+    description: "The category the product belongs to, e.g., 'Electronics', 'Books', 'Apparel'."
+    synonyms: ["product_type", "department"]
+  - name: price
+    type: decimal
+    description: "The retail price of a single unit of the product."
+    synonyms: ["cost", "unit_price", "charge"]
+  - name: stock_quantity
+    type: integer
+    description: "The number of units currently available in inventory."
+    synonyms: ["inventory_count", "quantity_on_hand", "in_stock"]
+  - name: supplier_id
+    type: integer
+    description: "Foreign key that links to the suppliers table."

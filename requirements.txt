@@ -1,0 +1,6 @@
+pyyaml
+torch
+torch_geometric
+sentence-transformers
+falkordb
+spacy
