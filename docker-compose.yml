@@ -28,6 +28,7 @@ services:
     ports:
       - "6379:6379" # HTTP
       - "3000:3000" # UI
-    volumes:
-      - ./data/falkordb:/data
+# FIXME: check this mount, not really needed for now as we recreate things from scratch via graph_builder.py
+#    volumes:
+#      - ./data/falkordb:/data
 

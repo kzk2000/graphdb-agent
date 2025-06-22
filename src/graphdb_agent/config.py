@@ -22,4 +22,9 @@ HAN_OUT_CHANNELS = EMBEDDING_DIM # ensure this remains equal to the input
 SCHEMA_DIR = "/home/user/Dropbox/Python/PycharmProjects/graphdb-agent/schemas"
 
 # --- LLM Configuration ---
-SQL_DIALECT = "PostgreSQL"
+# SQL_DIALECT = "PostgreSQL"
+SQL_DIALECT = "Snowflake"
+
+# --- LLMLITE params (used in agent.py)
+LLM_MODEL = "gemini/gemini-1.5-flash-latest"
+API_KEY=os.environ["GOOGLE_API_KEY"]

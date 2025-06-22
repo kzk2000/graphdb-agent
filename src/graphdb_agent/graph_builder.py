@@ -32,25 +32,45 @@ def _upload_schema_to_falkordb(graph, schema_data):
 
     # --- PHASE 1: Create all nodes and HAS_COLUMN relationships ---
     for table_name, data in schema_data['tables'].items():
+        # Update the Table node creation to include all new keys
+        table_descriptions = data.get('table_description', [])
+        if isinstance(table_descriptions, str):
+            table_descriptions = [table_descriptions]
+
+        item_separator = " | "  # define separator for clarity and robustness
+
         graph.query("""
             MERGE (t:Table {name: $name})
-            SET t.description = $desc, t.sample_questions = $questions
-        """, {'name': table_name, 'desc': data['table_description'], 'questions': data['sample_questions']})
+            SET t.description = $desc, 
+                t.sample_questions = $questions,
+                t.business_rules = $rules,
+                t.few_shot_examples = $examples
+        """, {
+            'name': table_name,
+            'desc': " ".join(table_descriptions),
+            'questions': item_separator.join(data.get('sample_questions', [])),
+            'rules': item_separator.join(data.get('business_rules', [])),
+            'examples': item_separator.join(x['question'] for x in data.get('few_shot_examples', []))
+        })
 
-        # Create Column nodes and link them to their parent table
+        # Update the Column node creation
         for col in data['columns']:
             graph.query("""
-                 MATCH (t:Table {name: $table_name})
-                 MERGE (c:Column {name: $col_name, table_name: $table_name})
-                 MERGE (t)-[:HAS_COLUMN]->(c)
-                 MERGE (c)-[:BELONGS_TO]->(t)                 
-                 SET c.description = $col_desc, c.type = $col_type, c.synonyms = $synonyms
-             """, {
+                MATCH (t:Table {name: $table_name})
+                MERGE (c:Column {name: $col_name, table_name: $table_name})
+                MERGE (t)-[:HAS_COLUMN]->(c)
+                MERGE (c)-[:BELONGS_TO]->(t)                   
+                SET c.description = $desc, 
+                    c.type = $type, 
+                    c.synonyms = $synonyms,
+                    c.rules = $rules               
+            """, {
                 'table_name': table_name,
                 'col_name': col['name'],
-                'col_desc': col.get('description', ''),
-                'col_type': col.get('type', 'TEXT'),
-                'synonyms': ",".join(col.get('synonyms', []))
+                'desc': col.get('description', ''),
+                'type': col.get('type', 'TEXT'),
+                'synonyms': item_separator.join(col.get('synonyms', [])),
+                'rules': item_separator.join(col.get('rules', []))
             })
 
     # --- PHASE 2: Create LINKS_TO relationships from the global join file ---
@@ -75,13 +95,21 @@ def _run_han_pipeline_falkordb(graph, text_embedding_model):
     print("Extracting graph data...")
 
     # FalkorDB returns data in a list of lists, so we map it to dicts for consistency
-    tables_res = graph.query(
-        "MATCH (t:Table) RETURN id(t) AS id, t.name AS name, t.description AS desc, t.sample_questions AS questions").result_set
-    tables_data = [{'id': r[0], 'name': r[1], 'desc': r[2], 'sample_questions': r[3]} for r in tables_res]
+    print("Extracting graph data with all metadata...")
+    tables_res = graph.query("""
+        MATCH (t:Table) 
+        RETURN id(t) AS id, t.name AS name, t.description AS desc, 
+               t.sample_questions AS questions, t.business_rules AS rules, 
+               t.few_shot_examples AS examples
+    """).result_set
+    tables_data = [{'id': r[0], 'name': r[1], 'desc': r[2], 'questions': r[3], 'rules': r[4], 'examples': r[5]} for r in tables_res]
 
-    cols_res = graph.query(
-        "MATCH (c:Column) RETURN id(c) AS id, c.name AS name, c.description AS desc, c.type AS type").result_set
-    cols_data = [{'id': r[0], 'name': r[1], 'desc': r[2], 'type': r[3]} for r in cols_res]
+    cols_res = graph.query("""
+        MATCH (c:Column) 
+        RETURN id(c) AS id, c.name AS name, c.description AS desc, 
+               c.type AS type, c.synonyms AS synonyms, c.rules AS rules
+    """).result_set
+    cols_data = [{'id': r[0], 'name': r[1], 'desc': r[2], 'type': r[3], 'synonyms': r[4], 'rules': r[5]} for r in cols_res]
 
     # get the forward edges
     has_col_res = graph.query("MATCH (t:Table)-[:HAS_COLUMN]->(c:Column) RETURN id(t) AS src, id(c) AS dest").result_set
@@ -99,7 +127,7 @@ def _run_han_pipeline_falkordb(graph, text_embedding_model):
     table_id_map = {r['id']: i for i, r in enumerate(tables_data)}
     col_id_map = {r['id']: i for i, r in enumerate(cols_data)}
 
-    # Step 2: Prepare HeteroData object for PyG
+    # --- Step 2: Prepare HeteroData object with STRUCTURED text features ---
     print("Preparing data for PyTorch Geometric...")
     data = HeteroData()
     if has_col_data:
@@ -112,26 +140,56 @@ def _run_han_pipeline_falkordb(graph, text_embedding_model):
             [[col_id_map[r['src']] for r in belongs_to_data], [table_id_map[r['dest']] for r in belongs_to_data]],
             dtype=torch.long)
 
+    # Define separators for clarity and robustness
+    section_separator = " ; "
+    item_separator = " | "
+
+    # --- Build Rich Table Documents ---
     table_texts = []
     for r in tables_data:
-        questions_str = ""
-        if r.get('sample_questions'):
-            questions_str = f"This table can answer questions like: '{' '.join(r['sample_questions'])}'"
+        parts = []
+        parts.append(f"Table name: {r['name']}")
 
-        text = (f"Table: {r['name']}; Description: {r['desc']} {questions_str}")
-        table_texts.append(text)
+        # Add multi-line description
+        if r.get('desc') and isinstance(r['desc'], list):
+            parts.append(f"Description: {' '.join(r['desc'])}")
+        elif r.get('desc'):
+            parts.append(f"Description: {r['desc']}")
+
+        # Add business rules
+        if r.get('rules'):
+            parts.append(f"Business Rules: {r['rules']}")
+
+        # Add sample questions
+        if r.get('questions'):
+            parts.append(f"This table can answer questions like: '{r['questions']}'")
+
+        # Add questions from few-shot examples
+        if r.get('examples'):
+            example_questions = r.get('examples')
+            parts.append(f"It is also used for complex questions such as: '{' '.join(example_questions)}'")
+
+        table_texts.append(section_separator.join(parts))
 
     data['table'].x = torch.tensor(text_embedding_model.encode(table_texts), dtype=torch.float)
 
+    # --- Build Rich Column Documents ---
     col_texts = []
     for r in cols_data:
-        synonyms_str = ""
-        if r.get('synonyms'):
-            synonyms_str = f"Also known as: {', '.join(r['synonyms'])}."
+        parts = []
+        parts.append(f"Column name: {r['name']}.")
+        parts.append(f"Data type: {r.get('type', 'TEXT')}.")
 
-        text = (f"Column: {r['name']}. Description: {r['desc']} "
-                f"Type: {r['type']}. {synonyms_str}")
-        col_texts.append(text)
+        if r.get('desc'):
+            parts.append(f"Description: {r['desc']}")
+
+        if r.get('synonyms'):
+            parts.append(f"Synonyms: {r['synonyms']}.")
+
+        if r.get('rules'):
+            parts.append(f"Rules: {' '.join(r['rules'])}")
+
+        col_texts.append(section_separator.join(parts))
 
     data['column'].x = torch.tensor(text_embedding_model.encode(col_texts), dtype=torch.float)
 

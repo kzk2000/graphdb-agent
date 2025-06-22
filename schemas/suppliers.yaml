@@ -1,5 +1,7 @@
 table_name: suppliers
 table_description: "Lists all vendors and companies that supply products to us."
+business_rules:
+  - "The 'largest' suppliers refers to the top 8."
 sample_questions:
   - "Which suppliers provide our electronics?"
   - "List all suppliers located in Germany."

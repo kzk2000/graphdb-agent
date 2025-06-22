@@ -1,8 +1,32 @@
 table_name: customers
-table_description: "Stores all information about individual users and customers."
+table_description:
+  - "Stores core profile information for every customer."
+  - "An 'active' customer is defined as someone who has logged in within the last 30 days."
+  - "This table is used to analyze user engagement and registration trends."
+business_rules:
+  - "An 'active' customer is defined by the condition: `last_login_date >= CURRENT_DATE - INTERVAL '30 days'`."
+  - "The `country` column should be used for any questions about user location or geography."
+  - "A 'new' customer is one whose `signup_date` is within the last 7 days."
 sample_questions:
   - "Who are our newest customers?"
   - "List all users from California."
+few_shot_examples:
+  - question: "What is the engagement score for our top 10 newest customers?"
+    sql: |
+      WITH customer_scores AS (
+        SELECT
+          id,
+          name,
+          (login_count * 0.5) + (posts_made * 1.5) AS engagement_score
+        FROM customers
+        WHERE is_active = true
+      )
+      SELECT
+        name,
+        engagement_score
+      FROM customer_scores
+      ORDER BY signup_date DESC
+      LIMIT 10;
 columns:
   - name: id
     type: integer
@@ -10,6 +34,15 @@ columns:
   - name: name
     type: varchar
     description: "The full name of the customer."
+  - name: country
+    type: varchar
+    description: "The country where the user lives."
   - name: signup_date
     type: date
     description: "The date the customer registered."
+    synonyms: ["start_date", "registration_date"]
+  - name: last_login_date
+    type: date
+    description: "The last date the customer was logged into his account."
+    rules:
+      - "`last_login_date >= singup_date` should always be true"

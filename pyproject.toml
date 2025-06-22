@@ -1,7 +1,32 @@
 [project]
 name = "graphdb-agent"
 version = "0.1.0"
-description = "Add your description here"
+description = "Toolkit to build a Text-to-SQL agent"
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = []
+dependencies = [
+    "falkordb>=1.1.2",
+    "ipython>=8.37.0",
+    "numpy>=2.2.6",
+    "pandas>=2.3.0",
+    "pip>=25.1.1",
+    "pyyaml>=6.0.2",
+    "spacy>=3.8.7",
+    "torch>=2.7.1",
+    "torch-geometric>=2.6.1",
+    "en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl",
+    "rank-bm25>=0.2.2",
+    "sentence-transformers>=4.1.0",
+    "scikit-learn>=1.7.0",
+    "litellm>=1.72.9",
+    "plotly>=6.1.2",
+    "nbformat>=5.10.4",
+    "sql-formatter>=0.6.2",
+]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]

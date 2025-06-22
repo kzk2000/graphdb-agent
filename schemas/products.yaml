@@ -26,4 +26,4 @@ columns:
     synonyms: ["inventory_count", "quantity_on_hand", "in_stock"]
   - name: supplier_id
     type: integer
-    description: "Foreign key that links to the suppliers table."
+    description: "Foreign key that links to the `suppliers` table."

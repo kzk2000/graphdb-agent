@@ -18,4 +18,11 @@ columns:
   - name: total_amount
     type: decimal
     description: "The total monetary value of the order."
-    synonyms: ["revenue", "sales", "price", "cost", "income"]
+    synonyms: ["revenue", "sales", "cost", "income"]
+  - name: status
+    type: varchar
+    description: "The current status of the order."
+    rules:
+      - "The value 'Shipped' means the order has left the warehouse."
+      - "The value 'Delivered' means the customer has received the order."
+      - "Use `status = 'Shipped'` for any questions about completed sales."
