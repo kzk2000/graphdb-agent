@@ -1,0 +1,66 @@
+- id: revenue_trend_q1
+  question: "What was our monthly revenue trend for Q1 of last year?"
+  sql: |
+    SELECT
+      TO_CHAR(order_date, 'YYYY-MM') AS sales_month,
+      SUM(total_amount) AS monthly_revenue
+    FROM orders
+    WHERE order_date >= '2023-01-01' AND order_date < '2023-04-01'
+    GROUP BY sales_month
+    ORDER BY sales_month;
+  tables_used:
+    - orders
+  tags:
+    - finance
+    - temporal
+    - aggregation
+
+- id: biggest_spenders
+  question: "Which 5 customers are our biggest spenders of all time?"
+  sql: |
+    SELECT
+      c.name,
+      SUM(o.total_amount) AS total_spent
+    FROM customers c
+    JOIN orders o ON c.id = o.customer_id
+    GROUP BY c.name
+    ORDER BY total_spent DESC
+    LIMIT 5;
+  tables_used:
+    - customers
+    - orders
+  tags:
+    - finance
+    - ranking
+    - join
+
+- id: most_stocked_product
+  question: "What is our most stocked product in the 'Electronics' category?"
+  sql: |
+    SELECT
+      name,
+      stock_quantity
+    FROM products
+    WHERE category = 'Electronics'
+    ORDER BY stock_quantity DESC
+    LIMIT 1;
+  tables_used:
+    - products
+  tags:
+    - inventory
+    - filtering
+    - ranking
+
+- id: new_user_count
+  question: "How many new users signed up yesterday?"
+  sql: |
+    SELECT
+      COUNT(id) AS new_user_count
+    FROM customers
+    WHERE signup_date = CURRENT_DATE - INTERVAL '1 day';
+  tables_used:
+    - customers
+  tags:
+    - user_growth
+    - temporal
+    - count

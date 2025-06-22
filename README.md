@@ -48,13 +48,9 @@ This is the real-time process run by `agent.py` to answer a user's question.
 
 ```
 .
-├── docker-compose.yml
 ├── docs                                                    -- folder: contains documentation on some of the design desciions
-├── LICENSE
-├── pyproject.toml
-├── README.md
-├── schemas                                                 -- folder: contains SQL table definitions + meta data  
-├── src
+├── schemas                                                 -- folder: contains SQL table definitions + meta data
+├── src                                                     -- folder: the actual Python package code
 │   ├── graphdb_agent
 │   │   ├── agent.py
 │   │   ├── config.py
@@ -66,10 +62,12 @@ This is the real-time process run by `agent.py` to answer a user's question.
 │   │   ├── retriever.py
 │   │   ├── semantic.py
 │   │   └── z_snippets.py
+├── docker-compose.yml                                      -- stars GraphDB server, e.g. FalkorDB
+├── LICENSE
+├── pyproject.toml                                          -- defines project dependencies
+├── README.md 
 └── uv.lock                                                 -- for `uv sync`
-
 ```
-
 ---
 
 ## Setup and Installation
@@ -97,8 +95,8 @@ This is the real-time process run by `agent.py` to answer a user's question.
    docker compose up -d
    ``` 
    Its UI is accessible via http://localhost:3000/graph 
----
 
+---
 ## Usage
 
 ### 1. Define Your Schema
@@ -109,7 +107,8 @@ existing examples.
 
 ### 2. Run the Indexing Pipeline
 
-Execute the graph builder script to populate FalkorDB and generate the HAN embeddings. This only needs to be done once, or whenever your schema changes.
+Execute the graph builder script to populate FalkorDB and generate the HAN embeddings. This only needs to be done once, 
+or whenever your schema changes.
 
 ```bash
 uv run src/graphdb_agent/graph_builder.py 

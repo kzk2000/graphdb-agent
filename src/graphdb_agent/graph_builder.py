@@ -246,11 +246,76 @@ def get_schema_data():
         if filename.endswith(".yaml"):
             with open(os.path.join(config.SCHEMA_DIR, filename), 'r') as f:
                 data = yaml.safe_load(f)
-                if "join_paths" in filename:
+                if "_global_join_paths" in filename:
                     schema_data["join_paths"] = data
+                elif "_global_sample_questions" in filename:
+                    schema_data["sample_questions"] = data
+
                 else:
                     schema_data['tables'][data['table_name']] = data
     return schema_data
+
+
+def _create_sample_question_nodes(graph, text_embed_model):
+    """
+    Parses the sample_questions.yaml file, creates SampleQuestion nodes,
+    generates their embeddings, and links them to the tables they use.
+    """
+    print("\n--- Creating SampleQuestion nodes and relationships ---")
+
+    questions_path = os.path.join(config.SCHEMA_DIR, "_global_sample_questions.yaml")
+    if not os.path.exists(questions_path):
+        print("Warning: sample_questions.yaml not found. Skipping creation of example nodes.")
+        return
+
+    with open(questions_path, 'r') as f:
+        all_questions = yaml.safe_load(f) or []
+
+    if not all_questions:
+        print("sample_questions.yaml is empty. No nodes to create.")
+        return
+
+    print(f"Found {len(all_questions)} sample questions to process...")
+
+    for i, item in enumerate(all_questions):
+        # Basic validation
+        # if not all({'id', 'question', 'sql', 'tables_used', 'tags'} <= item.keys()):
+        #     print(f"Warning: Skipping item {i + 1} due to missing required keys.")
+        #     continue
+
+        question_text = item['question']
+
+        # 1. Generate the vector embedding for the question text
+        embedding = text_embed_model.encode(question_text).tolist()
+
+        # 2. Create the SampleQuestion node in the graph database
+        # We use MERGE on the unique 'id' to make this operation idempotent.
+        # If you run the script again, it will update existing nodes instead of creating duplicates.
+        graph.query("""
+            MERGE (q:SampleQuestion {id: $id})
+            SET q.question_text = $question_text,
+                q.sql_query = $sql_query,
+                q.tags = $tags,
+                q.embedding = $embedding
+        """, {
+            'id': item['id'],
+            'question_text': question_text,
+            'sql_query': item['sql'],
+            'tags': ", ".join(item.get('tags', [])),
+            'embedding': embedding
+        })
+
+        # 3. Create the :USES_TABLE relationships to link the question to its tables
+        for table_name in item['tables_used']:
+            # This query finds the question node we just created/updated and the existing table node,
+            # then creates a relationship between them.
+            graph.query("""
+                MATCH (q:SampleQuestion {id: $qid})
+                MATCH (t:Table {name: $tname})
+                MERGE (q)-[:USES_TABLE]->(t)
+            """, {'qid': item['id'], 'tname': table_name})
+
+    print(f"✅ Successfully processed and created/updated {len(all_questions)} SampleQuestion nodes.")
 
 
 def build_graph():
@@ -272,6 +337,7 @@ def build_graph():
         print(f"Graph did not exist, creating new. (Error: {e})")
 
     _upload_schema_to_falkordb(graph, schema_data)
+    _create_sample_question_nodes(graph, text_embedding_model)
     _run_han_pipeline_falkordb(graph, text_embedding_model)
 
     print("\n--- Verification ---")
